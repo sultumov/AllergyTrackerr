@@ -53,7 +53,7 @@ class ProductsViewModel(application: Application) : AndroidViewModel(application
         if (product != null) {
             // Получаем аллергены пользователя из профиля
             val userAllergens = userManager.getAllergens()
-            
+
             val dangerousAllergens = product.allergens.filter { it in userAllergens }
             
             if (dangerousAllergens.isEmpty()) {

@@ -28,7 +28,7 @@
         android:name="com.example.myapplication.ui.recipes.RecipesFragment"
         android:label="@string/title_recipes"
         tools:layout="@layout/fragment_recipes" />
-        
+
     <fragment
         android:id="@+id/navigation_profile"
         android:name="com.example.myapplication.ui.profile.ProfileFragment"

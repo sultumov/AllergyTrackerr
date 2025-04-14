@@ -1,8 +1,12 @@
 package com.example.myapplication.ui.tracker
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
+import com.example.myapplication.data.UserManager
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import java.util.Date
 
 data class AllergyReaction(
@@ -13,15 +17,31 @@ data class AllergyReaction(
     val notes: String
 )
 
-class TrackerViewModel : ViewModel() {
+class TrackerViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val _reactionRecords = MutableLiveData<List<AllergyReaction>>().apply {
-        // Здесь будем загружать данные из локального хранилища
-        // Пока используем тестовые данные
-        value = getTestData()
+    private val userManager = UserManager.getInstance(application.applicationContext)
+    private val gson = Gson()
+    private val sharedPreferences = application.getSharedPreferences("allergy_prefs", 0)
+    
+    private val _reactionRecords = MutableLiveData<List<AllergyReaction>>()
+    val reactionRecords: LiveData<List<AllergyReaction>> = _reactionRecords
+    
+    init {
+        loadReactions()
     }
     
-    val reactionRecords: LiveData<List<AllergyReaction>> = _reactionRecords
+    private fun loadReactions() {
+        val reactionsJson = sharedPreferences.getString(KEY_REACTIONS, null)
+        val savedReactions = if (reactionsJson != null) {
+            val type = object : TypeToken<List<AllergyReaction>>() {}.type
+            gson.fromJson<List<AllergyReaction>>(reactionsJson, type)
+        } else {
+            // Если нет сохраненных данных, используем тестовые
+            getTestData()
+        }
+        
+        _reactionRecords.value = savedReactions
+    }
 
     private fun getTestData(): List<AllergyReaction> {
         // Тестовые данные для демонстрации
@@ -45,8 +65,17 @@ class TrackerViewModel : ViewModel() {
 
     fun addReaction(reaction: AllergyReaction) {
         val currentList = _reactionRecords.value?.toMutableList() ?: mutableListOf()
-        currentList.add(reaction)
+        currentList.add(0, reaction) // Добавляем в начало списка
         _reactionRecords.value = currentList
-        // TODO: Save to local storage
+        saveReactions(currentList)
+    }
+    
+    private fun saveReactions(reactions: List<AllergyReaction>) {
+        val reactionsJson = gson.toJson(reactions)
+        sharedPreferences.edit().putString(KEY_REACTIONS, reactionsJson).apply()
+    }
+    
+    companion object {
+        private const val KEY_REACTIONS = "saved_reactions"
     }
 } 
