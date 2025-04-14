@@ -39,6 +39,13 @@ class RecipesFragment : Fragment() {
 
         return root
     }
+    
+    override fun onResume() {
+        super.onResume()
+        // Перезагружаем список рецептов при возвращении к фрагменту
+        // для учета возможных изменений в профиле пользователя
+        viewModel.loadSafeRecipes()
+    }
 
     override fun onDestroyView() {
         super.onDestroyView()

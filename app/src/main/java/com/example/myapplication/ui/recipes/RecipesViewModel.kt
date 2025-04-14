@@ -1,8 +1,10 @@
 package com.example.myapplication.ui.recipes
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
+import com.example.myapplication.data.UserManager
 
 data class Recipe(
     val id: Long,
@@ -12,22 +14,23 @@ data class Recipe(
     val allergens: List<String>
 )
 
-class RecipesViewModel : ViewModel() {
+class RecipesViewModel(application: Application) : AndroidViewModel(application) {
 
-    // Для демонстрации используем фиксированный список аллергенов пользователя
-    private val userAllergens = listOf("молоко", "арахис")
+    private val userManager = UserManager.getInstance(application.applicationContext)
     
-    private val _safeRecipes = MutableLiveData<List<Recipe>>().apply {
-        value = getFilteredRecipes()
-    }
-
+    private val _safeRecipes = MutableLiveData<List<Recipe>>()
     val safeRecipes: LiveData<List<Recipe>> = _safeRecipes
-
-    private fun getFilteredRecipes(): List<Recipe> {
-        val allRecipes = getAllRecipes()
-        return allRecipes.filter { recipe ->
+    
+    init {
+        loadSafeRecipes()
+    }
+    
+    fun loadSafeRecipes() {
+        val userAllergens = userManager.getAllergens()
+        val filteredRecipes = getAllRecipes().filter { recipe ->
             recipe.allergens.none { allergen -> allergen in userAllergens }
         }
+        _safeRecipes.value = filteredRecipes
     }
 
     private fun getAllRecipes(): List<Recipe> {

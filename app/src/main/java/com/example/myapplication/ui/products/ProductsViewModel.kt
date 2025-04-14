@@ -1,8 +1,10 @@
 package com.example.myapplication.ui.products
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
+import com.example.myapplication.data.UserManager
 
 data class Product(
     val name: String,
@@ -10,8 +12,9 @@ data class Product(
     val allergens: List<String>
 )
 
-class ProductsViewModel : ViewModel() {
+class ProductsViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val userManager = UserManager.getInstance(application.applicationContext)
     private val _productCheckResult = MutableLiveData<String>()
     val productCheckResult: LiveData<String> = _productCheckResult
 
@@ -44,13 +47,13 @@ class ProductsViewModel : ViewModel() {
         )
     )
 
-    // Для демонстрации используем фиксированный список аллергенов пользователя
-    private val userAllergens = listOf("молоко", "арахис")
-
     fun checkProduct(productName: String) {
         val product = products[productName.lowercase()]
         
         if (product != null) {
+            // Получаем аллергены пользователя из профиля
+            val userAllergens = userManager.getAllergens()
+            
             val dangerousAllergens = product.allergens.filter { it in userAllergens }
             
             if (dangerousAllergens.isEmpty()) {
