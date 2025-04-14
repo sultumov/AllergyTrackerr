@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Здоровое Питание</string>
+    <string name="title_tracker">Трекер</string>
+    <string name="title_allergens">Справочник</string>
+    <string name="title_products">Продукты</string>
+    <string name="title_recipes">Рецепты</string>
+</resources>
