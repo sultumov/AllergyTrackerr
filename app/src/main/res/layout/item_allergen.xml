@@ -18,28 +18,37 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="18sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:text="Название аллергена" />
 
         <TextView
             android:id="@+id/text_allergen_category"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
             android:textSize="14sp"
+            android:textStyle="italic"
+            android:text="Категория" />
+
+        <TextView
+            android:id="@+id/text_allergen_description"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:textSize="14sp"
+            android:text="Описание аллергена" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="end"
+            android:text="Нажмите для подробной информации"
+            android:textSize="12sp"
+            android:textColor="#3F51B5"
             android:textStyle="italic" />
-
-        <TextView
-            android:id="@+id/text_allergen_symptoms"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textSize="14sp" />
-
-        <TextView
-            android:id="@+id/text_allergen_recommendations"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textSize="14sp" />
 
     </LinearLayout>
 </androidx.cardview.widget.CardView> 
