@@ -4,133 +4,162 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.UserManager
+import com.example.myapplication.data.model.Recipe
+import com.example.myapplication.data.model.RecipeInformation
+import com.example.myapplication.data.repository.RecipeRepository
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.launch
 
-data class Recipe(
+data class CustomRecipe(
     val id: Long,
     val title: String,
     val ingredients: List<String>,
     val instructions: String,
     val allergens: List<String>,
-    val isCustom: Boolean = false // Флаг для пользовательских рецептов
+    val isCustom: Boolean = true
 )
 
 class RecipesViewModel(application: Application) : AndroidViewModel(application) {
 
     private val userManager = UserManager.getInstance(application.applicationContext)
+    private val recipeRepository = RecipeRepository()
     private val gson = Gson()
     private val sharedPreferences = application.getSharedPreferences("recipe_prefs", 0)
     
-    private val _allRecipes = MutableLiveData<List<Recipe>>()
-    private val _safeRecipes = MutableLiveData<List<Recipe>>()
-    val safeRecipes: LiveData<List<Recipe>> = _safeRecipes
+    private val _loading = MutableLiveData<Boolean>()
+    val loading: LiveData<Boolean> = _loading
+    
+    private val _recipes = MutableLiveData<List<Recipe>>()
+    val recipes: LiveData<List<Recipe>> = _recipes
+    
+    private val _customRecipes = MutableLiveData<List<CustomRecipe>>()
+    val customRecipes: LiveData<List<CustomRecipe>> = _customRecipes
+    
+    private val _recipeDetail = MutableLiveData<RecipeInformation>()
+    val recipeDetail: LiveData<RecipeInformation> = _recipeDetail
+    
+    private val _error = MutableLiveData<String>()
+    val error: LiveData<String> = _error
     
     init {
-        loadRecipes()
+        loadCustomRecipes()
     }
     
-    private fun loadRecipes() {
-        // Загружаем пользовательские рецепты
+    // Загрузка пользовательских рецептов из SharedPreferences
+    private fun loadCustomRecipes() {
         val customRecipesJson = sharedPreferences.getString(KEY_CUSTOM_RECIPES, null)
-        val customRecipes = if (customRecipesJson != null) {
-            val type = object : TypeToken<List<Recipe>>() {}.type
-            gson.fromJson<List<Recipe>>(customRecipesJson, type)
+        if (customRecipesJson != null) {
+            val type = object : TypeToken<List<CustomRecipe>>() {}.type
+            val recipes = gson.fromJson<List<CustomRecipe>>(customRecipesJson, type)
+            _customRecipes.value = recipes
         } else {
-            emptyList()
-        }
-        
-        // Объединяем с предустановленными рецептами
-        val allRecipes = customRecipes + getDefaultRecipes()
-        _allRecipes.value = allRecipes
-        
-        // Фильтруем безопасные рецепты
-        filterSafeRecipes()
-    }
-    
-    fun loadSafeRecipes() {
-        filterSafeRecipes()
-    }
-    
-    private fun filterSafeRecipes() {
-        val userAllergens = userManager.getAllergens()
-        val allRecipesList = _allRecipes.value ?: emptyList()
-        
-        _safeRecipes.value = allRecipesList.filter { recipe ->
-            recipe.allergens.none { allergen -> allergen in userAllergens }
+            _customRecipes.value = emptyList()
         }
     }
     
-    fun addRecipe(title: String, ingredients: List<String>, instructions: String, allergens: List<String>) {
-        val newRecipe = Recipe(
+    // Добавление нового пользовательского рецепта
+    fun addCustomRecipe(title: String, ingredients: List<String>, instructions: String, allergens: List<String>) {
+        val newRecipe = CustomRecipe(
             id = System.currentTimeMillis(),
             title = title,
             ingredients = ingredients,
             instructions = instructions,
-            allergens = allergens,
-            isCustom = true
+            allergens = allergens
         )
         
-        // Обновляем списки рецептов
-        val currentAllRecipes = _allRecipes.value?.toMutableList() ?: mutableListOf()
-        currentAllRecipes.add(0, newRecipe) // Добавляем в начало списка
-        _allRecipes.value = currentAllRecipes
+        // Обновляем список рецептов
+        val currentRecipes = _customRecipes.value?.toMutableList() ?: mutableListOf()
+        currentRecipes.add(0, newRecipe) // Добавляем в начало списка
+        _customRecipes.value = currentRecipes
         
         // Сохраняем пользовательские рецепты
         saveCustomRecipes()
-        
-        // Обновляем безопасные рецепты
-        filterSafeRecipes()
     }
     
+    // Сохранение пользовательских рецептов в SharedPreferences
     private fun saveCustomRecipes() {
-        val allRecipesList = _allRecipes.value ?: return
-        val customRecipes = allRecipesList.filter { it.isCustom }
-        
-        val recipesJson = gson.toJson(customRecipes)
+        val recipes = _customRecipes.value ?: return
+        val recipesJson = gson.toJson(recipes)
         sharedPreferences.edit().putString(KEY_CUSTOM_RECIPES, recipesJson).apply()
     }
     
-    private fun getDefaultRecipes(): List<Recipe> {
-        // Стандартные рецепты
-        return listOf(
-            Recipe(
-                1,
-                "Овощной салат",
-                listOf("огурец", "помидор", "лук", "оливковое масло", "соль"),
-                "1. Нарежьте овощи. 2. Смешайте в миске. 3. Заправьте маслом и солью.",
-                listOf()
-            ),
-            Recipe(
-                2,
-                "Фруктовый салат",
-                listOf("яблоко", "груша", "виноград", "мед"),
-                "1. Нарежьте фрукты. 2. Смешайте в миске. 3. Добавьте немного меда.",
-                listOf("мед")
-            ),
-            Recipe(
-                3,
-                "Молочный коктейль",
-                listOf("молоко", "банан", "сахар", "ваниль"),
-                "1. Смешайте все ингредиенты в блендере. 2. Взбивайте до однородной массы.",
-                listOf("молоко")
-            ),
-            Recipe(
-                4,
-                "Арахисовое печенье",
-                listOf("мука", "масло", "яйца", "арахис", "сахар"),
-                "1. Смешайте все ингредиенты. 2. Сформируйте печенье. 3. Выпекайте 10-15 минут.",
-                listOf("глютен", "яйца", "арахис")
-            ),
-            Recipe(
-                5,
-                "Рисовая каша с фруктами",
-                listOf("рис", "вода", "яблоко", "корица", "мед"),
-                "1. Отварите рис. 2. Добавьте нарезанные яблоки и корицу. 3. По желанию добавьте мед.",
-                listOf("мед")
-            )
-        )
+    // Поиск рецептов по запросу
+    fun searchRecipes(query: String) {
+        _loading.value = true
+        viewModelScope.launch {
+            val userAllergens = userManager.getAllergens()
+            recipeRepository.searchRecipes(
+                query = query,
+                intolerances = if (userAllergens.isNotEmpty()) userAllergens else null
+            ).onSuccess { recipes ->
+                _recipes.value = recipes
+                if (recipes.isEmpty()) {
+                    _error.value = "По вашему запросу ничего не найдено"
+                }
+            }.onFailure { exception ->
+                _error.value = "Ошибка поиска рецептов: ${exception.message}"
+            }
+            _loading.value = false
+        }
+    }
+    
+    // Получение подробной информации о рецепте
+    fun getRecipeDetails(recipeId: Int) {
+        _loading.value = true
+        viewModelScope.launch {
+            recipeRepository.getRecipeInformation(recipeId)
+                .onSuccess { recipeInfo ->
+                    _recipeDetail.value = recipeInfo
+                }
+                .onFailure { exception ->
+                    _error.value = "Ошибка получения информации о рецепте: ${exception.message}"
+                }
+            _loading.value = false
+        }
+    }
+    
+    // Поиск безопасных рецептов (без аллергенов пользователя)
+    fun findSafeRecipes() {
+        val userAllergens = userManager.getAllergens()
+        if (userAllergens.isEmpty()) {
+            _error.value = "Не указаны аллергены в профиле. Добавьте их в настройках для персонализированного поиска."
+            loadRandomRecipes() // Загружаем случайные рецепты, если нет аллергенов
+            return
+        }
+        
+        _loading.value = true
+        viewModelScope.launch {
+            recipeRepository.searchRecipesWithoutAllergens(userAllergens)
+                .onSuccess { recipes ->
+                    _recipes.value = recipes
+                    if (recipes.isEmpty()) {
+                        _error.value = "Не найдено рецептов, которые соответствуют вашим требованиям"
+                    }
+                }
+                .onFailure { exception ->
+                    _error.value = "Ошибка поиска безопасных рецептов: ${exception.message}"
+                    loadRandomRecipes() // Загружаем случайные рецепты в случае ошибки
+                }
+            _loading.value = false
+        }
+    }
+    
+    // Загрузка случайных рецептов
+    private fun loadRandomRecipes() {
+        _loading.value = true
+        viewModelScope.launch {
+            recipeRepository.getRandomRecipes()
+                .onSuccess { recipes ->
+                    _recipes.value = recipes
+                }
+                .onFailure { exception ->
+                    _error.value = "Ошибка получения рецептов: ${exception.message}"
+                }
+            _loading.value = false
+        }
     }
     
     companion object {

@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.SearchView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -12,15 +13,19 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.myapplication.R
+import com.example.myapplication.data.model.Recipe
 import com.example.myapplication.databinding.DialogAddRecipeBinding
 import com.example.myapplication.databinding.FragmentRecipesBinding
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.material.tabs.TabLayout
 
 class RecipesFragment : Fragment() {
 
     private var _binding: FragmentRecipesBinding? = null
     private val binding get() = _binding!!
     private lateinit var viewModel: RecipesViewModel
+    private lateinit var apiRecipesAdapter: ApiRecipesAdapter
+    private lateinit var customRecipesAdapter: CustomRecipesAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -32,22 +37,114 @@ class RecipesFragment : Fragment() {
         _binding = FragmentRecipesBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
-        // Setup RecyclerView
-        val recyclerView: RecyclerView = binding.recyclerRecipes
-        recyclerView.layoutManager = LinearLayoutManager(context)
-        
-        // Setup Add Recipe FAB
-        val fabAddRecipe: FloatingActionButton = binding.fabAddRecipe
-        fabAddRecipe.setOnClickListener {
-            showAddRecipeDialog()
-        }
-        
-        // Observe recipes list
-        viewModel.safeRecipes.observe(viewLifecycleOwner) { recipes ->
-            recyclerView.adapter = RecipesAdapter(recipes)
-        }
+        setupTabLayout()
+        setupRecyclerViews()
+        setupSearchView()
+        setupAddRecipeFab()
+        setupObservers()
+
+        // Загружаем безопасные рецепты при запуске
+        viewModel.findSafeRecipes()
 
         return root
+    }
+    
+    private fun setupTabLayout() {
+        binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                when (tab.position) {
+                    0 -> { // Безопасные рецепты (API)
+                        showApiRecipes()
+                        viewModel.findSafeRecipes()
+                    }
+                    1 -> { // Поиск рецептов
+                        showApiRecipes()
+                        showSearchView(true)
+                    }
+                    2 -> { // Мои рецепты
+                        showCustomRecipes()
+                        showSearchView(false)
+                    }
+                }
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab) {}
+            override fun onTabReselected(tab: TabLayout.Tab) {}
+        })
+    }
+    
+    private fun setupRecyclerViews() {
+        // Настройка адаптера для API рецептов
+        apiRecipesAdapter = ApiRecipesAdapter { recipe ->
+            viewModel.getRecipeDetails(recipe.id)
+            // Здесь можно добавить код для показа подробной информации о рецепте
+            showRecipeDetailsDialog(recipe)
+        }
+        
+        // Настройка адаптера для пользовательских рецептов
+        customRecipesAdapter = CustomRecipesAdapter()
+        
+        binding.recyclerRecipes.apply {
+            layoutManager = LinearLayoutManager(context)
+            adapter = apiRecipesAdapter // По умолчанию показываем API рецепты
+        }
+    }
+    
+    private fun setupSearchView() {
+        binding.searchRecipes.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String): Boolean {
+                if (query.isNotEmpty()) {
+                    viewModel.searchRecipes(query)
+                }
+                return true
+            }
+            
+            override fun onQueryTextChange(newText: String): Boolean {
+                return false
+            }
+        })
+    }
+    
+    private fun setupAddRecipeFab() {
+        binding.fabAddRecipe.setOnClickListener {
+            showAddRecipeDialog()
+        }
+    }
+    
+    private fun setupObservers() {
+        // Наблюдение за API рецептами
+        viewModel.recipes.observe(viewLifecycleOwner) { recipes ->
+            apiRecipesAdapter.updateRecipes(recipes)
+            binding.textNoRecipes.visibility = if (recipes.isEmpty()) View.VISIBLE else View.GONE
+        }
+        
+        // Наблюдение за пользовательскими рецептами
+        viewModel.customRecipes.observe(viewLifecycleOwner) { recipes ->
+            customRecipesAdapter.updateRecipes(recipes)
+        }
+        
+        // Наблюдение за состоянием загрузки
+        viewModel.loading.observe(viewLifecycleOwner) { isLoading ->
+            binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+        }
+        
+        // Наблюдение за ошибками
+        viewModel.error.observe(viewLifecycleOwner) { errorMessage ->
+            if (errorMessage.isNotEmpty()) {
+                Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    private fun showApiRecipes() {
+        binding.recyclerRecipes.adapter = apiRecipesAdapter
+    }
+    
+    private fun showCustomRecipes() {
+        binding.recyclerRecipes.adapter = customRecipesAdapter
+    }
+    
+    private fun showSearchView(show: Boolean) {
+        binding.searchRecipes.visibility = if (show) View.VISIBLE else View.GONE
     }
     
     private fun showAddRecipeDialog() {
@@ -88,19 +185,21 @@ class RecipesFragment : Fragment() {
                 emptyList()
             }
             
-            viewModel.addRecipe(title, ingredients, instructions, allergens)
+            viewModel.addCustomRecipe(title, ingredients, instructions, allergens)
             Toast.makeText(context, "Рецепт успешно добавлен", Toast.LENGTH_SHORT).show()
+            
+            // Переключаемся на вкладку с пользовательскими рецептами
+            binding.tabLayout.getTabAt(2)?.select()
+            
             alertDialog.dismiss()
         }
         
         alertDialog.show()
     }
     
-    override fun onResume() {
-        super.onResume()
-        // Перезагружаем список рецептов при возвращении к фрагменту
-        // для учета возможных изменений в профиле пользователя
-        viewModel.loadSafeRecipes()
+    private fun showRecipeDetailsDialog(recipe: Recipe) {
+        // Здесь можно реализовать показ подробной информации о рецепте
+        Toast.makeText(context, "Показ рецепта: ${recipe.title}", Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroyView() {
@@ -109,28 +208,80 @@ class RecipesFragment : Fragment() {
     }
 }
 
-// Адаптер для отображения рецептов
-class RecipesAdapter(private val recipes: List<Recipe>) : 
-    RecyclerView.Adapter<RecipesAdapter.ViewHolder>() {
+// Адаптер для отображения API рецептов
+class ApiRecipesAdapter(
+    private val onRecipeClick: (Recipe) -> Unit
+) : RecyclerView.Adapter<ApiRecipesAdapter.ViewHolder>() {
+
+    private var recipes: List<Recipe> = emptyList()
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val titleTextView: TextView = view.findViewById(R.id.text_recipe_title)
-        val ingredientsTextView: TextView = view.findViewById(R.id.text_recipe_ingredients)
-        val instructionsTextView: TextView = view.findViewById(R.id.text_recipe_instructions)
+        val readyTimeTextView: TextView = view.findViewById(R.id.text_recipe_ready_time)
+        val servingsTextView: TextView = view.findViewById(R.id.text_recipe_servings)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_recipe, parent, false)
+            .inflate(R.layout.item_api_recipe, parent, false)
         return ViewHolder(view)
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val recipe = recipes[position]
         holder.titleTextView.text = recipe.title
-        holder.ingredientsTextView.text = recipe.ingredients.joinToString(", ")
-        holder.instructionsTextView.text = recipe.instructions
+        holder.readyTimeTextView.text = "Время приготовления: ${recipe.readyInMinutes} мин"
+        holder.servingsTextView.text = "Порций: ${recipe.servings}"
+        
+        holder.itemView.setOnClickListener {
+            onRecipeClick(recipe)
+        }
     }
 
     override fun getItemCount() = recipes.size
+    
+    fun updateRecipes(newRecipes: List<Recipe>) {
+        recipes = newRecipes
+        notifyDataSetChanged()
+    }
+}
+
+// Адаптер для отображения пользовательских рецептов
+class CustomRecipesAdapter : RecyclerView.Adapter<CustomRecipesAdapter.ViewHolder>() {
+
+    private var recipes: List<CustomRecipe> = emptyList()
+
+    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val titleTextView: TextView = view.findViewById(R.id.text_recipe_title)
+        val ingredientsTextView: TextView = view.findViewById(R.id.text_recipe_ingredients)
+        val instructionsTextView: TextView = view.findViewById(R.id.text_recipe_instructions)
+        val allergensTextView: TextView = view.findViewById(R.id.text_recipe_allergens)
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_custom_recipe, parent, false)
+        return ViewHolder(view)
+    }
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        val recipe = recipes[position]
+        holder.titleTextView.text = recipe.title
+        holder.ingredientsTextView.text = "Ингредиенты: ${recipe.ingredients.joinToString(", ")}"
+        holder.instructionsTextView.text = recipe.instructions
+        
+        if (recipe.allergens.isNotEmpty()) {
+            holder.allergensTextView.visibility = View.VISIBLE
+            holder.allergensTextView.text = "Содержит аллергены: ${recipe.allergens.joinToString(", ")}"
+        } else {
+            holder.allergensTextView.visibility = View.GONE
+        }
+    }
+
+    override fun getItemCount() = recipes.size
+    
+    fun updateRecipes(newRecipes: List<CustomRecipe>) {
+        recipes = newRecipes
+        notifyDataSetChanged()
+    }
 } 
