@@ -1,9 +1,8 @@
 package com.example.myapplication.data.api
 
 import android.util.Log
-import com.example.myapplication.data.model.ApiProduct
+import com.example.myapplication.data.model.BarcodeListProduct
 import com.example.myapplication.data.model.Product
-import com.example.myapplication.data.model.ProductResponse
 import com.example.myapplication.data.model.ProductScanResult
 import com.example.myapplication.data.model.ScanStatus
 import kotlinx.coroutines.Dispatchers
@@ -15,10 +14,10 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 /**
- * Сервис для получения информации о продуктах из различных источников
+ * Сервис для работы с API barcode-list.ru
  */
-class ProductService {
-    private val TAG = "ProductService"
+class BarcodeListRuService {
+    private val TAG = "BarcodeListRuService"
     
     // Настройка логирования запросов
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
@@ -33,67 +32,39 @@ class ProductService {
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
     
-    // OpenFoodFacts API
-    private val openFoodFactsRetrofit = Retrofit.Builder()
-        .baseUrl("https://world.openfoodfacts.org/")
+    // Создание Retrofit-клиента
+    private val retrofit = Retrofit.Builder()
+        .baseUrl("https://barcode-list.ru/")
         .client(okHttpClient)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
     
-    private val openFoodFactsApi = openFoodFactsRetrofit.create(OpenFoodFactsApi::class.java)
-    
-    // Российский сервис штрих-кодов
-    private val barcodeListRuService = BarcodeListRuService.getInstance()
+    private val api = retrofit.create(BarcodeListRuApi::class.java)
     
     /**
-     * Получает информацию о продукте по штрих-коду из различных источников
+     * Получение информации о продукте по штрих-коду
      * @param barcode Штрих-код продукта
      * @param userAllergens Список аллергенов пользователя
      */
     suspend fun getProductByBarcode(barcode: String, userAllergens: List<String>): ProductScanResult = withContext(Dispatchers.IO) {
-        Log.d(TAG, "Поиск продукта по штрих-коду: $barcode")
-        
-        // Проверяем, российский ли это товар (штрих-код начинается с 460-469)
-        val isRussianBarcode = barcode.startsWith("46")
-        
-        if (isRussianBarcode) {
-            Log.d(TAG, "Обнаружен российский штрих-код, сначала ищем в barcode-list.ru")
-            // Сначала ищем в российской базе
-            val russianResult = barcodeListRuService.getProductByBarcode(barcode, userAllergens)
-            
-            // Если нашли в российской базе, возвращаем
-            if (russianResult.status == ScanStatus.SUCCESS || russianResult.status == ScanStatus.CONTAINS_ALLERGENS) {
-                Log.d(TAG, "Продукт найден в российской базе: ${russianResult.product?.name}")
-                return@withContext russianResult
-            }
-            
-            // Если не нашли, пробуем искать в OpenFoodFacts
-            Log.d(TAG, "Продукт не найден в российской базе, ищем в OpenFoodFacts")
-        }
-        
-        // Поиск в OpenFoodFacts
-        return@withContext searchInOpenFoodFacts(barcode, userAllergens)
-    }
-    
-    /**
-     * Поиск продукта в базе OpenFoodFacts
-     */
-    private suspend fun searchInOpenFoodFacts(barcode: String, userAllergens: List<String>): ProductScanResult {
         try {
-            Log.d(TAG, "Запрос к OpenFoodFacts для штрих-кода: $barcode")
-            val response = openFoodFactsApi.getProductByBarcode(barcode)
+            Log.d(TAG, "Запрос к barcode-list.ru для штрих-кода: $barcode")
+            val response = api.getProductByBarcode(barcode)
             
             if (response.isSuccessful) {
                 val productResponse = response.body()
-                if (productResponse?.status == 1 && productResponse.product != null) {
+                
+                if (productResponse?.status == "success" && !productResponse.products.isNullOrEmpty()) {
                     // Продукт найден
-                    val product = mapApiResponseToProduct(productResponse)
-                    Log.d(TAG, "Продукт найден в OpenFoodFacts: ${product.name}")
+                    val barcodeListProduct = productResponse.products[0]
+                    val product = mapToProduct(barcodeListProduct)
+                    
+                    Log.d(TAG, "Продукт найден: ${product.name}")
                     
                     // Проверяем на наличие аллергенов пользователя
                     val allergenWarnings = findAllergenWarnings(product, userAllergens)
                     
-                    return if (allergenWarnings.isNotEmpty()) {
+                    return@withContext if (allergenWarnings.isNotEmpty()) {
                         ProductScanResult(
                             status = ScanStatus.CONTAINS_ALLERGENS,
                             product = product,
@@ -107,24 +78,24 @@ class ProductService {
                     }
                 } else {
                     // Продукт не найден
-                    Log.d(TAG, "Продукт не найден в OpenFoodFacts")
-                    return ProductScanResult(
+                    Log.d(TAG, "Продукт не найден: ${productResponse?.message ?: "Unknown error"}")
+                    return@withContext ProductScanResult(
                         status = ScanStatus.NOT_FOUND,
-                        message = "Продукт с таким штрих-кодом не найден ни в одной базе данных"
+                        message = "Продукт с таким штрих-кодом не найден в российской базе данных"
                     )
                 }
             } else {
                 // Ошибка запроса
-                Log.e(TAG, "Ошибка запроса к OpenFoodFacts: ${response.code()}")
-                return ProductScanResult(
+                Log.e(TAG, "Ошибка запроса: ${response.code()}")
+                return@withContext ProductScanResult(
                     status = ScanStatus.NETWORK_ERROR,
                     message = "Ошибка при получении данных (${response.code()})"
                 )
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Исключение при запросе: ${e.message}", e)
             // Ошибка сети или другая ошибка
-            Log.e(TAG, "Исключение при запросе к OpenFoodFacts: ${e.message}", e)
-            return ProductScanResult(
+            return@withContext ProductScanResult(
                 status = ScanStatus.NETWORK_ERROR,
                 message = "Ошибка: ${e.message}"
             )
@@ -134,27 +105,23 @@ class ProductService {
     /**
      * Преобразует ответ API в модель продукта
      */
-    private fun mapApiResponseToProduct(response: ProductResponse): Product {
-        val apiProduct = response.product
-        
+    private fun mapToProduct(barcodeProduct: BarcodeListProduct): Product {
         // Парсим ингредиенты
-        val ingredients = apiProduct.ingredients?.map { it.text } ?: emptyList()
+        val ingredients = barcodeProduct.ingredients?.split(",")?.map { it.trim() } ?: emptyList()
         
         // Парсим аллергены
-        val allergens = apiProduct.allergensTags?.map { 
-            it.removePrefix("en:").replace('-', ' ').trim()
-        } ?: emptyList()
+        val allergens = barcodeProduct.allergens ?: emptyList()
         
         return Product(
-            id = response.code,
-            barcode = response.code,
-            name = apiProduct.productName ?: "Неизвестный продукт",
-            brand = apiProduct.brands,
-            imageUrl = apiProduct.imageUrl,
+            id = barcodeProduct.barcode,
+            barcode = barcodeProduct.barcode,
+            name = barcodeProduct.name,
+            brand = barcodeProduct.brand,
+            description = barcodeProduct.description,
             ingredients = ingredients,
             allergens = allergens,
-            nutriScore = apiProduct.nutriScore,
-            nutritionalInfo = null // Для простоты пропускаем пищевую ценность
+            imageUrl = barcodeProduct.image,
+            nutriScore = null // В данном API нет информации о пищевой ценности
         )
     }
     
@@ -162,12 +129,13 @@ class ProductService {
      * Находит предупреждения об аллергенах для пользователя
      */
     private fun findAllergenWarnings(product: Product, userAllergens: List<String>): List<String> {
-        if (userAllergens.isEmpty() || product.allergens.isEmpty()) {
+        if (userAllergens.isEmpty()) {
             return emptyList()
         }
         
         val warnings = mutableListOf<String>()
         
+        // Проверяем явные аллергены
         for (allergen in product.allergens) {
             for (userAllergen in userAllergens) {
                 if (allergen.contains(userAllergen, ignoreCase = true) || 
@@ -194,11 +162,11 @@ class ProductService {
     
     companion object {
         @Volatile
-        private var INSTANCE: ProductService? = null
+        private var INSTANCE: BarcodeListRuService? = null
         
-        fun getInstance(): ProductService {
+        fun getInstance(): BarcodeListRuService {
             return INSTANCE ?: synchronized(this) {
-                INSTANCE ?: ProductService().also {
+                INSTANCE ?: BarcodeListRuService().also {
                     INSTANCE = it
                 }
             }
