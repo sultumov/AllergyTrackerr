@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit
 /**
  * Сервис для работы с API barcode-list.ru
  */
-class BarcodeListRuService {
+open class BarcodeListRuService {
     private val TAG = "BarcodeListRuService"
     
     // Настройка логирования запросов
@@ -39,7 +39,8 @@ class BarcodeListRuService {
         .addConverterFactory(GsonConverterFactory.create())
         .build()
     
-    private val api = retrofit.create(BarcodeListRuApi::class.java)
+    // Делаем API открытым для возможности переопределения в тестах
+    open val api: BarcodeListRuApi = retrofit.create(BarcodeListRuApi::class.java)
     
     /**
      * Получение информации о продукте по штрих-коду

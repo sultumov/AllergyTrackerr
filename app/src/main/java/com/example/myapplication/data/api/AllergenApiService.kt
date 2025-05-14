@@ -13,7 +13,7 @@ object AllergenApiService {
     
     // URLs для API
     private const val NCBI_BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
-    private const val WIKIPEDIA_BASE_URL = "https://ru.wikipedia.org/api/"
+    private const val WIKIPEDIA_BASE_URL = "https://ru.wikipedia.org/w/"
     
     // Настройка логирования запросов
     private val loggingInterceptor = HttpLoggingInterceptor().apply {

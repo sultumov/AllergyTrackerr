@@ -5,7 +5,7 @@ import com.google.gson.annotations.SerializedName
 data class ProductResponse(
     val status: Int,
     val code: String,
-    val product: ApiProduct,
+    val product: ApiProduct?,
     @SerializedName("status_verbose")
     val statusVerbose: String
 )

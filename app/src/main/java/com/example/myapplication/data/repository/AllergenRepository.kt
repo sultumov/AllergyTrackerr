@@ -124,21 +124,21 @@ class AllergenRepository {
                                     content = page.extract ?: "Информация отсутствует",
                                     imageUrl = page.thumbnail?.source
                                 )
-                                Result.success(wikipediaInfo)
+                                return@withContext Result.success(wikipediaInfo)
                             } else {
-                                Result.success(null)
+                                return@withContext Result.success(null)
                             }
                         } else {
-                            Result.failure(Exception("Ошибка получения содержимого статьи: ${contentResponse.code()}"))
+                            return@withContext Result.failure(Exception("Ошибка получения содержимого статьи: ${contentResponse.code()}"))
                         }
                     } else {
-                        Result.success(null)
+                        return@withContext Result.success(null)
                     }
                 } else {
-                    Result.failure(Exception("Ошибка поиска в Википедии: ${response.code()}"))
+                    return@withContext Result.failure(Exception("Ошибка поиска в Википедии: ${response.code()}"))
                 }
             } catch (e: Exception) {
-                Result.failure(e)
+                return@withContext Result.failure(e)
             }
         }
     }

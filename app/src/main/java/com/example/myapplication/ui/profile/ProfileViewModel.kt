@@ -34,9 +34,11 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     }
     
     fun addAllergen(allergen: String) {
-        if (allergen.isNotBlank() && !_allergens.value?.contains(allergen.lowercase().trim())!! == true) {
+        // Проверяем, что аллерген не пустой и его еще нет в списке
+        val allergenNormalized = allergen.lowercase().trim()
+        if (allergenNormalized.isNotBlank() && !(_allergens.value?.map { it.lowercase().trim() }?.contains(allergenNormalized) ?: false)) {
             val updatedAllergens = _allergens.value?.toMutableList() ?: mutableListOf()
-            updatedAllergens.add(allergen.lowercase().trim())
+            updatedAllergens.add(allergenNormalized)
             userManager.saveAllergens(updatedAllergens)
             _allergens.value = updatedAllergens
             

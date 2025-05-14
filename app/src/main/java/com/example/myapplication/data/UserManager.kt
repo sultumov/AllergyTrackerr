@@ -46,12 +46,18 @@ class UserManager(context: Context) {
     
     fun getAllergens(): List<String> {
         val allergensJson = sharedPreferences.getString(KEY_ALLERGENS, null)
-        return if (allergensJson != null) {
-            val type = object : TypeToken<List<String>>() {}.type
-            gson.fromJson(allergensJson, type)
-        } else {
-            listOf("молоко", "арахис") // Значения по умолчанию
+        
+        // Если аллергены еще не были сохранены, устанавливаем значения по умолчанию
+        // и сохраняем их в SharedPreferences
+        if (allergensJson == null) {
+            val defaultAllergens = listOf("молоко", "арахис")
+            saveAllergens(defaultAllergens)
+            return defaultAllergens
         }
+        
+        // Иначе возвращаем сохраненные аллергены
+        val type = object : TypeToken<List<String>>() {}.type
+        return gson.fromJson(allergensJson, type)
     }
     
     // Алиас для getAllergens() для согласованности с репозиторием продуктов

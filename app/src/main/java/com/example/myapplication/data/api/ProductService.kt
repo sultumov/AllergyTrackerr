@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit
 /**
  * Сервис для получения информации о продуктах из различных источников
  */
-class ProductService {
+open class ProductService {
     private val TAG = "ProductService"
     
     // Настройка логирования запросов
@@ -40,10 +40,11 @@ class ProductService {
         .addConverterFactory(GsonConverterFactory.create())
         .build()
     
-    private val openFoodFactsApi = openFoodFactsRetrofit.create(OpenFoodFactsApi::class.java)
+    // Делаем API открытым для возможности переопределения в тестах
+    open val openFoodFactsApi: OpenFoodFactsApi = openFoodFactsRetrofit.create(OpenFoodFactsApi::class.java)
     
     // Российский сервис штрих-кодов
-    private val barcodeListRuService = BarcodeListRuService.getInstance()
+    open val barcodeListRuService = BarcodeListRuService.getInstance()
     
     /**
      * Получает информацию о продукте по штрих-коду из различных источников
@@ -78,7 +79,7 @@ class ProductService {
     /**
      * Поиск продукта в базе OpenFoodFacts
      */
-    private suspend fun searchInOpenFoodFacts(barcode: String, userAllergens: List<String>): ProductScanResult {
+    internal suspend fun searchInOpenFoodFacts(barcode: String, userAllergens: List<String>): ProductScanResult {
         try {
             Log.d(TAG, "Запрос к OpenFoodFacts для штрих-кода: $barcode")
             val response = openFoodFactsApi.getProductByBarcode(barcode)
@@ -135,7 +136,7 @@ class ProductService {
      * Преобразует ответ API в модель продукта
      */
     private fun mapApiResponseToProduct(response: ProductResponse): Product {
-        val apiProduct = response.product
+        val apiProduct = response.product ?: throw IllegalArgumentException("ApiProduct cannot be null")
         
         // Парсим ингредиенты
         val ingredients = apiProduct.ingredients?.map { it.text } ?: emptyList()

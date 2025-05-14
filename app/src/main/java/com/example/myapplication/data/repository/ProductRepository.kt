@@ -38,7 +38,7 @@ class ProductRepository(private val context: Context) {
                     product = localProduct,
                     allergenWarnings = allergenWarnings
                 )
-            } else {
+                } else {
                 ProductScanResult(
                     status = com.example.myapplication.data.model.ScanStatus.SUCCESS,
                     product = localProduct
@@ -169,8 +169,8 @@ class ProductRepository(private val context: Context) {
             }
             
             Result.success(safeProducts)
-        } catch (e: Exception) {
-            Result.failure(e)
+            } catch (e: Exception) {
+                Result.failure(e)
         }
     }
     

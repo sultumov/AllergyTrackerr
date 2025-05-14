@@ -58,11 +58,13 @@ class AllergensFragment : Fragment() {
     
     private fun setupCategorySpinner() {
         viewModel.categories.observe(viewLifecycleOwner) { categories ->
-            val categoryNames = categories.map { it.getLocalizedName() }
+            // Добавляем "Все категории" в начало списка
+            val displayCategories = listOf("Все категории") + categories.map { it.getLocalizedName() }
+            
             val adapter = ArrayAdapter(
                 requireContext(),
                 android.R.layout.simple_spinner_item,
-                categoryNames
+                displayCategories
             ).apply {
                 setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             }
@@ -74,14 +76,17 @@ class AllergensFragment : Fragment() {
                 setOnItemSelectedListener(object : AdapterView.OnItemSelectedListener {
                     override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                         if (position == 0) {
+                            // Выбрано "Все категории"
                             viewModel.loadAllAllergens()
                         } else {
+                            // Выбрана конкретная категория
+                            // Учитываем смещение на 1 из-за добавления "Все категории"
                             viewModel.filterByCategory(categories[position - 1])
                         }
                     }
 
                     override fun onNothingSelected(parent: AdapterView<*>?) {
-                        // Ничего не делаем или реализуем необходимую логику
+                        // Ничего не делаем
                     }
                 })
             }
