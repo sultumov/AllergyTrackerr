@@ -7,13 +7,27 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.UserManager
 import com.example.myapplication.data.model.Product
+import com.example.myapplication.data.model.ProductScanResult
+import com.example.myapplication.data.model.ScanStatus
 import com.example.myapplication.data.repository.ProductRepository
 import kotlinx.coroutines.launch
 
+/**
+ * ViewModel для работы с продуктами
+ */
 class ProductsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val userManager = UserManager.getInstance(application.applicationContext)
-    private val productRepository = ProductRepository()
+    private val productRepository = ProductRepository.getInstance(application)
+    
+    private val _scanResult = MutableLiveData<ProductScanResult>()
+    val scanResult: LiveData<ProductScanResult> = _scanResult
+    
+    private val _isScanning = MutableLiveData<Boolean>()
+    val isScanning: LiveData<Boolean> = _isScanning
+    
+    private val _recentProducts = MutableLiveData<List<Product>>()
+    val recentProducts: LiveData<List<Product>> = _recentProducts
     
     private val _loading = MutableLiveData<Boolean>()
     val loading: LiveData<Boolean> = _loading
@@ -27,24 +41,51 @@ class ProductsViewModel(application: Application) : AndroidViewModel(application
     private val _error = MutableLiveData<String>()
     val error: LiveData<String> = _error
 
-    // Получение продукта по штрих-коду
-    fun getProductByBarcode(barcode: String) {
-        _loading.value = true
+    init {
+        loadRecentProducts()
+    }
+    
+    /**
+     * Загружает недавно отсканированные продукты
+     */
+    fun loadRecentProducts() {
         viewModelScope.launch {
-            productRepository.getProductByBarcode(barcode)
-                .onSuccess { product ->
-                    if (product != null) {
-                        checkProduct(product)
-                    } else {
-                        _productCheckResult.value = "Продукт с штрих-кодом '${barcode}' не найден в базе данных."
-                    }
-                }
-                .onFailure { exception ->
-                    _error.value = "Ошибка при получении данных: ${exception.message}"
-                    _productCheckResult.value = "Не удалось получить информацию о продукте. Пожалуйста, попробуйте снова."
-                }
-            _loading.value = false
+            _recentProducts.value = productRepository.getRecentProducts()
         }
+    }
+    
+    /**
+     * Получает информацию о продукте по штрих-коду
+     */
+    fun getProductByBarcode(barcode: String) {
+        viewModelScope.launch {
+            _loading.value = true
+            try {
+                val result = productRepository.getProductByBarcode(barcode)
+                _scanResult.value = result
+            } catch (e: Exception) {
+                _scanResult.value = ProductScanResult(
+                    status = ScanStatus.NETWORK_ERROR,
+                    message = "Ошибка: ${e.message}"
+                )
+            } finally {
+                _loading.value = false
+            }
+        }
+    }
+    
+    /**
+     * Обновляет состояние сканирования
+     */
+    fun setScanning(scanning: Boolean) {
+        _isScanning.value = scanning
+    }
+    
+    /**
+     * Очищает результаты сканирования
+     */
+    fun clearScanResult() {
+        _scanResult.value = null
     }
     
     // Поиск продуктов по названию
@@ -71,14 +112,8 @@ class ProductsViewModel(application: Application) : AndroidViewModel(application
         // Получаем аллергены пользователя из профиля
         val userAllergens = userManager.getAllergens()
         
-        // Получаем список аллергенов продукта
-        val productAllergens = product.allergensTags?.map { 
-            // Обычно аллергены имеют формат "en:gluten", "en:milk" и т.д.
-            it.substringAfter(":") 
-        } ?: emptyList()
-        
         // Находим опасные аллергены для пользователя
-        val dangerousAllergens = productAllergens.filter { allergen ->
+        val dangerousAllergens = product.allergens.filter { allergen ->
             userAllergens.any { userAllergen -> 
                 allergen.contains(userAllergen, ignoreCase = true) 
             }
@@ -86,17 +121,17 @@ class ProductsViewModel(application: Application) : AndroidViewModel(application
         
         if (dangerousAllergens.isEmpty()) {
             _productCheckResult.value = """
-                Продукт: ${product.productName}
+                Продукт: ${product.name}
                 
-                Состав: ${product.ingredients?.joinToString(", ") { it.text } ?: "Информация отсутствует"}
+                Состав: ${product.ingredients.joinToString(", ") ?: "Информация отсутствует"}
                 
                 Вывод: Этот продукт безопасен для вас.
             """.trimIndent()
         } else {
             _productCheckResult.value = """
-                Продукт: ${product.productName}
+                Продукт: ${product.name}
                 
-                Состав: ${product.ingredients?.joinToString(", ") { it.text } ?: "Информация отсутствует"}
+                Состав: ${product.ingredients.joinToString(", ") ?: "Информация отсутствует"}
                 
                 Внимание! Продукт содержит опасные для вас аллергены:
                 ${dangerousAllergens.joinToString(", ")}

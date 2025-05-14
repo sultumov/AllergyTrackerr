@@ -1,43 +1,68 @@
 package com.example.myapplication.ui.products
 
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.example.myapplication.R
+import com.bumptech.glide.Glide
 import com.example.myapplication.data.model.Product
+import com.example.myapplication.databinding.ItemProductBinding
 
+/**
+ * Адаптер для отображения списка продуктов
+ */
 class ProductAdapter(
-    private var products: List<Product> = emptyList(),
     private val onProductClick: (Product) -> Unit
 ) : RecyclerView.Adapter<ProductAdapter.ProductViewHolder>() {
 
-    class ProductViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val productName: TextView = itemView.findViewById(R.id.text_product_name)
-        val productBrand: TextView = itemView.findViewById(R.id.text_product_brand)
+    private val products = mutableListOf<Product>()
+
+    fun updateProducts(newProducts: List<Product>) {
+        products.clear()
+        products.addAll(newProducts)
+        notifyDataSetChanged()
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ProductViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_product, parent, false)
-        return ProductViewHolder(view)
+        val binding = ItemProductBinding.inflate(
+            LayoutInflater.from(parent.context),
+            parent,
+            false
+        )
+        return ProductViewHolder(binding)
+    }
+
+    override fun onBindViewHolder(holder: ProductViewHolder, position: Int) {
+        holder.bind(products[position])
     }
 
     override fun getItemCount(): Int = products.size
 
-    override fun onBindViewHolder(holder: ProductViewHolder, position: Int) {
-        val product = products[position]
-        holder.productName.text = product.productName
-        holder.productBrand.text = product.brands ?: "Неизвестный производитель"
-        
-        holder.itemView.setOnClickListener {
-            onProductClick(product)
-        }
-    }
+    inner class ProductViewHolder(
+        private val binding: ItemProductBinding
+    ) : RecyclerView.ViewHolder(binding.root) {
 
-    fun updateProducts(newProducts: List<Product>) {
-        products = newProducts
-        notifyDataSetChanged()
+        init {
+            binding.root.setOnClickListener {
+                val position = adapterPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    onProductClick(products[position])
+                }
+            }
+        }
+
+        fun bind(product: Product) {
+            binding.textProductName.text = product.name
+            binding.textProductBrand.text = product.brand ?: "Неизвестный бренд"
+            
+            // Загружаем изображение продукта, если доступно
+            if (product.imageUrl != null) {
+                Glide.with(binding.root.context)
+                    .load(product.imageUrl)
+                    .centerCrop()
+                    .into(binding.imageProduct)
+            } else {
+                binding.imageProduct.setImageResource(android.R.drawable.ic_menu_gallery)
+            }
+        }
     }
 } 

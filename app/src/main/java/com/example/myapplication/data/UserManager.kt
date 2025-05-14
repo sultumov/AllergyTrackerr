@@ -54,6 +54,9 @@ class UserManager(context: Context) {
         }
     }
     
+    // Алиас для getAllergens() для согласованности с репозиторием продуктов
+    fun getUserAllergens() = getAllergens()
+    
     fun clearUserData() {
         sharedPreferences.edit().clear().apply()
     }

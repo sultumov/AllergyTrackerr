@@ -15,7 +15,7 @@ interface WikipediaApi {
      * @param search Поисковый запрос
      * @param limit Ограничение количества результатов
      */
-    @GET("w/api.php")
+    @GET("api.php")
     suspend fun searchArticles(
         @Query("action") action: String = "query",
         @Query("format") format: String = "json",
@@ -28,7 +28,7 @@ interface WikipediaApi {
      * Получение содержимого статьи
      * @param titles Названия статей
      */
-    @GET("w/api.php")
+    @GET("api.php")
     suspend fun getArticleContent(
         @Query("action") action: String = "query",
         @Query("format") format: String = "json",

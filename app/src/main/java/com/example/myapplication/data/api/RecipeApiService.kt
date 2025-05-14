@@ -12,7 +12,7 @@ object RecipeApiService {
     
     // API ключ для Spoonacular. В реальном приложении его нужно хранить в защищенном месте, 
     // например в BuildConfig или через Android Keystore
-    const val API_KEY = "YOUR_SPOONACULAR_API_KEY"
+    const val API_KEY = "4f524550f50947c5a23ba1dcf8cdce5b"
     
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY

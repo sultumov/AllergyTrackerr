@@ -5,12 +5,12 @@ import com.google.gson.annotations.SerializedName
 data class ProductResponse(
     val status: Int,
     val code: String,
-    val product: Product,
+    val product: ApiProduct,
     @SerializedName("status_verbose")
     val statusVerbose: String
 )
 
-data class Product(
+data class ApiProduct(
     val id: String,
     @SerializedName("product_name")
     val productName: String,
@@ -24,7 +24,9 @@ data class Product(
     @SerializedName("image_url")
     val imageUrl: String?,
     @SerializedName("nutriments")
-    val nutrients: Nutrients?
+    val nutrients: Nutrients?,
+    @SerializedName("nutrition_grades")
+    val nutriScore: String?
 )
 
 data class Ingredient(
@@ -51,6 +53,6 @@ data class ProductSearchResponse(
     val page: Int,
     @SerializedName("page_size")
     val pageSize: Int,
-    val products: List<Product>,
+    val products: List<ApiProduct>,
     val skip: Int
 ) 
