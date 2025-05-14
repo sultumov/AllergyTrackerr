@@ -1,5 +1,6 @@
 package com.example.myapplication.data.repository
 
+import android.content.Context
 import com.example.myapplication.data.api.AllergenApiService
 import com.example.myapplication.data.model.Allergen
 import com.example.myapplication.data.model.AllergenCategory
@@ -10,8 +11,8 @@ import kotlinx.coroutines.withContext
  * Репозиторий для работы с данными об аллергенах
  * Объединяет локальные данные и информацию из внешних API
  */
-class AllergenRepository {
-    private val localDataSource = AllergenLocalDataSource()
+class AllergenRepository(private val context: Context? = null) {
+    private val localDataSource = AllergenLocalDataSource(context)
     private val ncbiApi = AllergenApiService.ncbiApi
     private val wikipediaApi = AllergenApiService.wikipediaApi
     
@@ -46,53 +47,21 @@ class AllergenRepository {
     /**
      * Получение списка всех категорий
      */
-    fun getAllCategories(): List<AllergenCategory> {
-        return localDataSource.getAllCategories()
+    fun getCategories(): List<AllergenCategory> {
+        return localDataSource.getCategories()
     }
     
     /**
      * Получение дополнительной научной информации об аллергене из NCBI
      */
-    suspend fun getScientificInfo(allergen: Allergen): Result<List<ArticleInfo>> {
+    suspend fun getNcbiInfo(query: String): String {
         return withContext(Dispatchers.IO) {
             try {
-                val searchTerm = "${allergen.name} allergy"
-                val response = ncbiApi.searchArticles(term = searchTerm)
-                
-                if (response.isSuccessful && response.body() != null) {
-                    val articleIds = response.body()?.esearchresult?.idlist ?: emptyList()
-                    
-                    if (articleIds.isNotEmpty()) {
-                        // Получаем информацию о первой статье
-                        val firstArticleId = articleIds.first()
-                        val summaryResponse = ncbiApi.getArticleSummary(id = firstArticleId)
-                        
-                        if (summaryResponse.isSuccessful && summaryResponse.body() != null) {
-                            val articles = summaryResponse.body()?.result?.uids?.mapNotNull { uid ->
-                                val summary = summaryResponse.body()?.result?.documentSummarySet?.get(uid)
-                                if (summary != null) {
-                                    ArticleInfo(
-                                        title = summary.title,
-                                        source = summary.source,
-                                        authors = summary.authors.map { it.name },
-                                        abstract = summary.abstract ?: "Аннотация отсутствует",
-                                        publicationDate = summary.pubdate
-                                    )
-                                } else null
-                            } ?: emptyList()
-                            
-                            Result.success(articles)
-                        } else {
-                            Result.failure(Exception("Ошибка получения информации о статье: ${summaryResponse.code()}"))
-                        }
-                    } else {
-                        Result.success(emptyList())
-                    }
-                } else {
-                    Result.failure(Exception("Ошибка поиска научных статей: ${response.code()}"))
-                }
+                val response = ncbiApi.searchInfo("allergen+$query")
+                response.body()?.toString() ?: "Информация не найдена"
             } catch (e: Exception) {
-                Result.failure(e)
+                e.printStackTrace()
+                "Ошибка при получении данных: ${e.message}"
             }
         }
     }
@@ -100,45 +69,21 @@ class AllergenRepository {
     /**
      * Получение дополнительной информации из Википедии
      */
-    suspend fun getWikipediaInfo(allergen: Allergen): Result<WikipediaInfo?> {
+    suspend fun getWikipediaInfo(query: String): String {
         return withContext(Dispatchers.IO) {
             try {
-                val searchTerm = "${allergen.name} аллергия"
-                val response = wikipediaApi.searchArticles(search = searchTerm)
+                val response = wikipediaApi.searchInfo(query = query)
+                val pages = response.body()?.query?.pages
                 
-                if (response.isSuccessful && response.body() != null) {
-                    val searchResults = response.body()?.query?.search ?: emptyList()
-                    
-                    if (searchResults.isNotEmpty()) {
-                        // Получаем информацию о первой найденной статье
-                        val firstResult = searchResults.first()
-                        val contentResponse = wikipediaApi.getArticleContent(titles = firstResult.title)
-                        
-                        if (contentResponse.isSuccessful && contentResponse.body() != null) {
-                            val pages = contentResponse.body()?.query?.pages ?: emptyMap()
-                            val page = pages.values.firstOrNull()
-                            
-                            if (page != null) {
-                                val wikipediaInfo = WikipediaInfo(
-                                    title = page.title,
-                                    content = page.extract ?: "Информация отсутствует",
-                                    imageUrl = page.thumbnail?.source
-                                )
-                                return@withContext Result.success(wikipediaInfo)
-                            } else {
-                                return@withContext Result.success(null)
-                            }
-                        } else {
-                            return@withContext Result.failure(Exception("Ошибка получения содержимого статьи: ${contentResponse.code()}"))
-                        }
-                    } else {
-                        return@withContext Result.success(null)
-                    }
+                if (pages != null && pages.isNotEmpty()) {
+                    val firstPage = pages.values.firstOrNull()
+                    return@withContext firstPage?.extract ?: "Информация не найдена"
                 } else {
-                    return@withContext Result.failure(Exception("Ошибка поиска в Википедии: ${response.code()}"))
+                    "Информация не найдена"
                 }
             } catch (e: Exception) {
-                return@withContext Result.failure(e)
+                e.printStackTrace()
+                "Ошибка при получении данных: ${e.message}"
             }
         }
     }

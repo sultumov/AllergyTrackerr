@@ -1,19 +1,18 @@
 package com.example.myapplication.ui.allergens
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.model.Allergen
 import com.example.myapplication.data.model.AllergenCategory
 import com.example.myapplication.data.repository.AllergenRepository
-import com.example.myapplication.data.repository.ArticleInfo
-import com.example.myapplication.data.repository.WikipediaInfo
 import kotlinx.coroutines.launch
 
-class AllergensViewModel : ViewModel() {
+class AllergensViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val allergenRepository = AllergenRepository()
+    private val allergenRepository = AllergenRepository(application.applicationContext)
     
     private val _allergens = MutableLiveData<List<Allergen>>()
     val allergens: LiveData<List<Allergen>> = _allergens
@@ -24,11 +23,11 @@ class AllergensViewModel : ViewModel() {
     private val _selectedAllergen = MutableLiveData<Allergen>()
     val selectedAllergen: LiveData<Allergen> = _selectedAllergen
     
-    private val _scientificInfo = MutableLiveData<List<ArticleInfo>>()
-    val scientificInfo: LiveData<List<ArticleInfo>> = _scientificInfo
+    private val _ncbiInfo = MutableLiveData<String>()
+    val ncbiInfo: LiveData<String> = _ncbiInfo
     
-    private val _wikipediaInfo = MutableLiveData<WikipediaInfo?>()
-    val wikipediaInfo: LiveData<WikipediaInfo?> = _wikipediaInfo
+    private val _wikipediaInfo = MutableLiveData<String>()
+    val wikipediaInfo: LiveData<String> = _wikipediaInfo
     
     private val _isLoading = MutableLiveData<Boolean>()
     val isLoading: LiveData<Boolean> = _isLoading
@@ -58,7 +57,7 @@ class AllergensViewModel : ViewModel() {
      * Загрузка категорий аллергенов
      */
     fun loadCategories() {
-        val allCategories = allergenRepository.getAllCategories()
+        val allCategories = allergenRepository.getCategories()
         _categories.value = allCategories
     }
     
@@ -105,25 +104,19 @@ class AllergensViewModel : ViewModel() {
         _isLoading.value = true
         
         viewModelScope.launch {
-            // Загрузка научной информации из NCBI
-            allergenRepository.getScientificInfo(allergen)
-                .onSuccess { articles ->
-                    _scientificInfo.value = articles
-                }
-                .onFailure { exception ->
-                    _error.value = "Ошибка загрузки научной информации: ${exception.message}"
-                }
-            
-            // Загрузка информации из Википедии
-            allergenRepository.getWikipediaInfo(allergen)
-                .onSuccess { info ->
-                    _wikipediaInfo.value = info
-                }
-                .onFailure { exception ->
-                    _error.value = "Ошибка загрузки информации из Википедии: ${exception.message}"
-                }
-            
-            _isLoading.value = false
+            try {
+                // Загрузка научной информации из NCBI
+                val ncbiResult = allergenRepository.getNcbiInfo(allergen.name)
+                _ncbiInfo.value = ncbiResult
+                
+                // Загрузка информации из Википедии
+                val wikiResult = allergenRepository.getWikipediaInfo(allergen.name)
+                _wikipediaInfo.value = wikiResult
+            } catch (e: Exception) {
+                _error.value = "Ошибка загрузки информации: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
     
@@ -132,7 +125,7 @@ class AllergensViewModel : ViewModel() {
      */
     fun clearSelectedAllergen() {
         _selectedAllergen.value = null
-        _scientificInfo.value = emptyList()
-        _wikipediaInfo.value = null
+        _ncbiInfo.value = ""
+        _wikipediaInfo.value = ""
     }
 } 

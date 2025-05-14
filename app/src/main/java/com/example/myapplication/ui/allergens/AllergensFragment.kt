@@ -164,24 +164,24 @@ class AllergensFragment : Fragment() {
             dialogBinding.layoutScientificName.visibility = View.GONE
         }
         
-        // Дополнительная информация из API
-        viewModel.scientificInfo.observe(viewLifecycleOwner) { articles ->
-            if (articles.isNotEmpty()) {
+        // Дополнительная информация из NCBI API
+        viewModel.ncbiInfo.observe(viewLifecycleOwner) { ncbiInfo ->
+            if (ncbiInfo.isNotEmpty() && ncbiInfo != "Информация не найдена") {
                 dialogBinding.layoutApiInfo.visibility = View.VISIBLE
-                val article = articles.first()
-                dialogBinding.textArticleTitle.text = article.title
-                dialogBinding.textArticleAbstract.text = article.abstract
-                dialogBinding.textArticleSource.text = "Источник: ${article.source}"
+                dialogBinding.textArticleTitle.text = "Научная информация"
+                dialogBinding.textArticleAbstract.text = ncbiInfo
+                dialogBinding.textArticleSource.text = "Источник: NCBI"
             } else {
                 dialogBinding.layoutApiInfo.visibility = View.GONE
             }
         }
         
+        // Информация из Википедии
         viewModel.wikipediaInfo.observe(viewLifecycleOwner) { wikiInfo ->
-            if (wikiInfo != null) {
+            if (wikiInfo.isNotEmpty() && wikiInfo != "Информация не найдена") {
                 dialogBinding.layoutWikipediaInfo.visibility = View.VISIBLE
-                dialogBinding.textWikipediaTitle.text = wikiInfo.title
-                dialogBinding.textWikipediaContent.text = wikiInfo.content
+                dialogBinding.textWikipediaTitle.text = "Информация из Википедии"
+                dialogBinding.textWikipediaContent.text = wikiInfo
             } else {
                 dialogBinding.layoutWikipediaInfo.visibility = View.GONE
             }
