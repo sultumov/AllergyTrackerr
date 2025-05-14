@@ -38,6 +38,23 @@ interface WikipediaApi {
         @Query("redirects") redirects: Int = 1,
         @Query("titles") titles: String
     ): Response<WikiContentResponse>
+    
+    /**
+     * Упрощенный метод для поиска информации по запросу
+     * Объединяет функциональность поиска и получения контента
+     * @param query Поисковый запрос
+     */
+    @GET("api.php")
+    suspend fun searchInfo(
+        @Query("action") action: String = "query",
+        @Query("format") format: String = "json",
+        @Query("prop") prop: String = "extracts",
+        @Query("generator") generator: String = "search",
+        @Query("gsrsearch") query: String,
+        @Query("gsrlimit") limit: Int = 1,
+        @Query("exintro") exintro: Int = 1,
+        @Query("explaintext") explaintext: Int = 1
+    ): Response<WikiContentResponse>
 }
 
 /**

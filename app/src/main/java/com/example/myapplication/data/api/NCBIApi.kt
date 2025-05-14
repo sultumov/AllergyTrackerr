@@ -34,6 +34,18 @@ interface NCBIApi {
         @Query("id") id: String,
         @Query("retmode") retmode: String = "json"
     ): Response<NCBISummaryResponse>
+    
+    /**
+     * Упрощенный метод для поиска информации по запросу
+     * @param query Поисковый запрос
+     */
+    @GET("esearch.fcgi")
+    suspend fun searchInfo(
+        @Query("db") db: String = "pubmed",
+        @Query("term") term: String,
+        @Query("retmax") retmax: Int = 3,
+        @Query("retmode") retmode: String = "json"
+    ): Response<NCBISearchResponse>
 }
 
 /**
