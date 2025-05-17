@@ -8,10 +8,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.UserManager
 import com.example.myapplication.data.model.Recipe
 import com.example.myapplication.data.model.RecipeInformation
-import com.example.myapplication.data.repository.RecipeRepository
+import com.example.myapplication.data.repository.USDARecipeRepository
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class CustomRecipe(
     val id: Long,
@@ -22,10 +24,13 @@ data class CustomRecipe(
     val isCustom: Boolean = true
 )
 
-class RecipesViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class RecipesViewModel @Inject constructor(
+    application: Application,
+    private val usdaRecipeRepository: USDARecipeRepository
+) : AndroidViewModel(application) {
 
     private val userManager = UserManager.getInstance(application.applicationContext)
-    private val recipeRepository = RecipeRepository()
     private val gson = Gson()
     private val sharedPreferences = application.getSharedPreferences("recipe_prefs", 0)
     
@@ -46,6 +51,7 @@ class RecipesViewModel(application: Application) : AndroidViewModel(application)
     
     init {
         loadCustomRecipes()
+        loadRandomRecipes() // Загружаем случайные рецепты при старте
     }
     
     // Загрузка пользовательских рецептов из SharedPreferences
@@ -90,18 +96,16 @@ class RecipesViewModel(application: Application) : AndroidViewModel(application)
     fun searchRecipes(query: String) {
         _loading.value = true
         viewModelScope.launch {
-            val userAllergens = userManager.getAllergens()
-            recipeRepository.searchRecipes(
-                query = query,
-                intolerances = if (userAllergens.isNotEmpty()) userAllergens else null
-            ).onSuccess { recipes ->
-                _recipes.value = recipes
-                if (recipes.isEmpty()) {
-                    _error.value = "По вашему запросу ничего не найдено"
+            usdaRecipeRepository.searchRecipes(query)
+                .onSuccess { recipes ->
+                    _recipes.value = recipes
+                    if (recipes.isEmpty()) {
+                        _error.value = "По вашему запросу ничего не найдено"
+                    }
                 }
-            }.onFailure { exception ->
-                _error.value = "Ошибка поиска рецептов: ${exception.message}"
-            }
+                .onFailure { exception ->
+                    _error.value = "Ошибка поиска рецептов: ${exception.message}"
+                }
             _loading.value = false
         }
     }
@@ -110,7 +114,7 @@ class RecipesViewModel(application: Application) : AndroidViewModel(application)
     fun getRecipeDetails(recipeId: Int) {
         _loading.value = true
         viewModelScope.launch {
-            recipeRepository.getRecipeInformation(recipeId)
+            usdaRecipeRepository.getRecipeInformation(recipeId)
                 .onSuccess { recipeInfo ->
                     _recipeDetail.value = recipeInfo
                 }
@@ -132,7 +136,7 @@ class RecipesViewModel(application: Application) : AndroidViewModel(application)
         
         _loading.value = true
         viewModelScope.launch {
-            recipeRepository.searchRecipesWithoutAllergens(userAllergens)
+            usdaRecipeRepository.searchRecipesWithoutAllergens(userAllergens)
                 .onSuccess { recipes ->
                     _recipes.value = recipes
                     if (recipes.isEmpty()) {
@@ -151,7 +155,7 @@ class RecipesViewModel(application: Application) : AndroidViewModel(application)
     private fun loadRandomRecipes() {
         _loading.value = true
         viewModelScope.launch {
-            recipeRepository.getRandomRecipes()
+            usdaRecipeRepository.getRandomRecipes()
                 .onSuccess { recipes ->
                     _recipes.value = recipes
                 }

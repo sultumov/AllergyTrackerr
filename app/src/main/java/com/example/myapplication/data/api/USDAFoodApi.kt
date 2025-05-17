@@ -15,15 +15,29 @@ interface USDAFoodApi {
     suspend fun searchFoods(
         @Query("query") query: String,
         @Query("api_key") apiKey: String,
-        @Query("pageSize") pageSize: Int = 25
+        @Query("pageSize") pageSize: Int = 25,
+        @Query("requireAllWords") requireAllWords: Boolean = true,
+        @Query("brandOwner") brandOwner: String? = null
     ): USDASearchResponse
+
+    @GET("foods/list")
+    suspend fun getFoodsList(
+        @Query("api_key") apiKey: String,
+        @Query("dataType") dataType: String = "Foundation,SR Legacy",
+        @Query("pageSize") pageSize: Int = 50
+    ): List<USDAFoodResponse>
 }
 
 data class USDAFoodResponse(
     val fdcId: Long,
     val description: String,
     val foodNutrients: List<USDANutrient>,
-    val foodAttributes: List<USDAAttribute>? = null
+    val foodAttributes: List<USDAAttribute>? = null,
+    val ingredients: String? = null,
+    val brandOwner: String? = null,
+    val foodCategory: String? = null,
+    val servingSize: Double? = null,
+    val servingSizeUnit: String? = null
 )
 
 data class USDANutrient(

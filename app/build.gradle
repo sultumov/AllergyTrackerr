@@ -1,8 +1,15 @@
 plugins {
     id 'com.android.application'
-    id 'kotlin-android'
+    id 'org.jetbrains.kotlin.android'
     id 'kotlin-kapt'
     id 'dagger.hilt.android.plugin'
+}
+
+// Версии зависимостей
+ext {
+    kotlin_version = '1.8.0'
+    hilt_version = '2.44'
+    java_version = JavaVersion.VERSION_11
 }
 
 android {
@@ -25,25 +32,38 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        sourceCompatibility java_version
+        targetCompatibility java_version
     }
+    
     kotlinOptions {
-        jvmTarget = '11'
+        jvmTarget = java_version.toString()
+        freeCompilerArgs += [
+            '-Xjvm-default=all',
+            '-opt-in=kotlin.RequiresOptIn'
+        ]
     }
+    
     buildFeatures {
         viewBinding true
     }
     
-    // Разрешаем использование котлин-функций с обратными кавычками в тестах
     testOptions {
         unitTests.all {
             // Удалено useJUnitPlatform(), так как используется JUnit 4
         }
     }
-}
 
+    kapt {
+        correctErrorTypes true
+        javacOptions {
+            option("-source", java_version.toString())
+            option("-target", java_version.toString())
+        }
+    }
+}
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.12.0'
@@ -64,7 +84,6 @@ dependencies {
     // iText для создания PDF
     implementation 'com.itextpdf:itextpdf:5.5.13.3'
     implementation 'com.itextpdf.tool:xmlworker:5.5.13.3'
-    implementation libs.appcompat
 
     // Retrofit для работы с API
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'
@@ -90,14 +109,12 @@ dependencies {
     implementation 'com.github.bumptech.glide:glide:4.16.0'
 
     // Hilt
-    implementation "com.google.dagger:hilt-android:2.44"
-    kapt "com.google.dagger:hilt-android-compiler:2.44"
+    implementation "com.google.dagger:hilt-android:$hilt_version"
+    kapt "com.google.dagger:hilt-android-compiler:$hilt_version"
     implementation 'androidx.hilt:hilt-navigation-fragment:1.0.0'
 
     // Тестирование
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.1'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.10.1'
     testImplementation 'org.mockito:mockito-core:5.7.0'
     testImplementation 'org.mockito.kotlin:mockito-kotlin:5.1.0'
     testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3'

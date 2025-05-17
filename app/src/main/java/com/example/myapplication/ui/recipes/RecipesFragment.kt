@@ -18,7 +18,9 @@ import com.example.myapplication.databinding.DialogAddRecipeBinding
 import com.example.myapplication.databinding.FragmentRecipesBinding
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.tabs.TabLayout
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class RecipesFragment : Fragment() {
 
     private var _binding: FragmentRecipesBinding? = null
@@ -198,8 +200,53 @@ class RecipesFragment : Fragment() {
     }
     
     private fun showRecipeDetailsDialog(recipe: Recipe) {
-        // Здесь можно реализовать показ подробной информации о рецепте
-        Toast.makeText(context, "Показ рецепта: ${recipe.title}", Toast.LENGTH_SHORT).show()
+        val dialogBuilder = AlertDialog.Builder(requireContext())
+        val view = LayoutInflater.from(context).inflate(R.layout.dialog_recipe_details, null)
+        
+        // Находим все View в диалоге
+        val titleTextView = view.findViewById<TextView>(R.id.text_recipe_title)
+        val summaryTextView = view.findViewById<TextView>(R.id.text_recipe_summary)
+        val servingsTextView = view.findViewById<TextView>(R.id.text_recipe_servings)
+        val readyTimeTextView = view.findViewById<TextView>(R.id.text_recipe_ready_time)
+        val dishTypesTextView = view.findViewById<TextView>(R.id.text_recipe_dish_types)
+        
+        // Заполняем информацией
+        titleTextView.text = recipe.title
+        summaryTextView.text = recipe.summary ?: "Нет описания"
+        servingsTextView.text = "Порций: ${recipe.servings}"
+        readyTimeTextView.text = "Время приготовления: ${recipe.readyInMinutes} мин"
+        
+        val dishTypes = recipe.dishTypes?.joinToString(", ") ?: "Не указано"
+        dishTypesTextView.text = "Тип блюда: $dishTypes"
+        
+        // Наблюдаем за детальной информацией
+        viewModel.recipeDetail.observe(viewLifecycleOwner) { recipeInfo ->
+            if (recipeInfo != null && recipeInfo.id == recipe.id) {
+                // Обновляем информацию, когда получаем детали
+                summaryTextView.text = recipeInfo.summary
+                
+                // Добавляем информацию о диетических свойствах
+                val dietInfo = buildString {
+                    if (recipeInfo.glutenFree) append("✓ Без глютена\n")
+                    if (recipeInfo.dairyFree) append("✓ Без молочных продуктов\n")
+                    if (recipeInfo.vegetarian) append("✓ Вегетарианское\n")
+                    if (recipeInfo.vegan) append("✓ Веганское\n")
+                }
+                if (dietInfo.isNotEmpty()) {
+                    view.findViewById<TextView>(R.id.text_recipe_diet_info)?.apply {
+                        text = dietInfo
+                        visibility = View.VISIBLE
+                    }
+                }
+            }
+        }
+        
+        dialogBuilder.setView(view)
+            .setPositiveButton("Закрыть") { dialog, _ ->
+                dialog.dismiss()
+            }
+        
+        dialogBuilder.create().show()
     }
 
     override fun onDestroyView() {

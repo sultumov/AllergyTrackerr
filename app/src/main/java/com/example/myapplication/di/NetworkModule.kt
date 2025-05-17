@@ -1,6 +1,9 @@
 package com.example.myapplication.di
 
+import com.example.myapplication.data.api.TranslationApi
 import com.example.myapplication.data.api.USDAFoodApi
+import com.example.myapplication.data.repository.USDARecipeRepository
+import com.example.myapplication.data.service.TranslationService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -36,5 +39,31 @@ object NetworkModule {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(USDAFoodApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTranslationApi(okHttpClient: OkHttpClient): TranslationApi {
+        return Retrofit.Builder()
+            .baseUrl("https://translate.api.cloud.yandex.net/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(TranslationApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTranslationService(translationApi: TranslationApi): TranslationService {
+        return TranslationService(translationApi)
+    }
+
+    @Provides
+    @Singleton
+    fun provideUSDARecipeRepository(
+        usdaApi: USDAFoodApi,
+        translationService: TranslationService
+    ): USDARecipeRepository {
+        return USDARecipeRepository(usdaApi, translationService)
     }
 } 
