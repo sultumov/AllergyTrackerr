@@ -51,7 +51,7 @@ class RecipesViewModel @Inject constructor(
     
     init {
         loadCustomRecipes()
-        loadRandomRecipes() // Загружаем случайные рецепты при старте
+        loadRandomRecipes()
     }
     
     // Загрузка пользовательских рецептов из SharedPreferences
@@ -96,17 +96,29 @@ class RecipesViewModel @Inject constructor(
     fun searchRecipes(query: String) {
         _loading.value = true
         viewModelScope.launch {
-            usdaRecipeRepository.searchRecipes(query)
-                .onSuccess { recipes ->
-                    _recipes.value = recipes
-                    if (recipes.isEmpty()) {
+            try {
+                val userAllergens = userManager.getAllergens()
+                val result = usdaRecipeRepository.searchRecipes(query)
+                
+                result.onSuccess { recipes ->
+                    // Фильтруем рецепты, исключая те, что содержат аллергены пользователя
+                    val filteredRecipes = recipes.filter { recipe ->
+                        val recipeIngredients = recipe.extendedIngredients?.map { it.lowercase() } ?: emptyList()
+                        userAllergens.none { allergen ->
+                            recipeIngredients.any { it.contains(allergen.lowercase()) }
+                        }
+                    }
+                    
+                    _recipes.value = filteredRecipes
+                    if (filteredRecipes.isEmpty()) {
                         _error.value = "По вашему запросу ничего не найдено"
                     }
-                }
-                .onFailure { exception ->
+                }.onFailure { exception ->
                     _error.value = "Ошибка поиска рецептов: ${exception.message}"
                 }
-            _loading.value = false
+            } finally {
+                _loading.value = false
+            }
         }
     }
     
@@ -114,14 +126,46 @@ class RecipesViewModel @Inject constructor(
     fun getRecipeDetails(recipeId: Int) {
         _loading.value = true
         viewModelScope.launch {
-            usdaRecipeRepository.getRecipeInformation(recipeId)
-                .onSuccess { recipeInfo ->
+            try {
+                val result = usdaRecipeRepository.getRecipeInformation(recipeId)
+                result.onSuccess { recipeInfo ->
                     _recipeDetail.value = recipeInfo
-                }
-                .onFailure { exception ->
+                }.onFailure { exception ->
                     _error.value = "Ошибка получения информации о рецепте: ${exception.message}"
                 }
-            _loading.value = false
+            } finally {
+                _loading.value = false
+            }
+        }
+    }
+    
+    // Загрузка случайных рецептов
+    private fun loadRandomRecipes() {
+        _loading.value = true
+        viewModelScope.launch {
+            try {
+                val userAllergens = userManager.getAllergens()
+                val result = usdaRecipeRepository.getRandomRecipes()
+                
+                result.onSuccess { recipes ->
+                    // Фильтруем случайные рецепты, исключая те, что содержат аллергены пользователя
+                    val filteredRecipes = recipes.filter { recipe ->
+                        val recipeIngredients = recipe.extendedIngredients?.map { it.lowercase() } ?: emptyList()
+                        userAllergens.none { allergen ->
+                            recipeIngredients.any { it.contains(allergen.lowercase()) }
+                        }
+                    }
+                    
+                    _recipes.value = filteredRecipes
+                    if (filteredRecipes.isEmpty()) {
+                        loadRandomRecipes() // Пробуем загрузить другие случайные рецепты
+                    }
+                }.onFailure { exception ->
+                    _error.value = "Ошибка загрузки рецептов: ${exception.message}"
+                }
+            } finally {
+                _loading.value = false
+            }
         }
     }
     
@@ -136,33 +180,30 @@ class RecipesViewModel @Inject constructor(
         
         _loading.value = true
         viewModelScope.launch {
-            usdaRecipeRepository.searchRecipesWithoutAllergens(userAllergens)
-                .onSuccess { recipes ->
-                    _recipes.value = recipes
-                    if (recipes.isEmpty()) {
-                        _error.value = "Не найдено рецептов, которые соответствуют вашим требованиям"
+            try {
+                val result = usdaRecipeRepository.getRandomRecipes()
+                
+                result.onSuccess { recipes ->
+                    // Фильтруем рецепты, исключая те, что содержат аллергены пользователя
+                    val filteredRecipes = recipes.filter { recipe ->
+                        val recipeIngredients = recipe.extendedIngredients?.map { it.lowercase() } ?: emptyList()
+                        userAllergens.none { allergen ->
+                            recipeIngredients.any { it.contains(allergen.lowercase()) }
+                        }
                     }
-                }
-                .onFailure { exception ->
+                    
+                    _recipes.value = filteredRecipes
+                    if (filteredRecipes.isEmpty()) {
+                        _error.value = "Не найдено рецептов, которые соответствуют вашим требованиям"
+                        loadRandomRecipes() // Пробуем загрузить другие рецепты
+                    }
+                }.onFailure { exception ->
                     _error.value = "Ошибка поиска безопасных рецептов: ${exception.message}"
                     loadRandomRecipes() // Загружаем случайные рецепты в случае ошибки
                 }
-            _loading.value = false
-        }
-    }
-    
-    // Загрузка случайных рецептов
-    private fun loadRandomRecipes() {
-        _loading.value = true
-        viewModelScope.launch {
-            usdaRecipeRepository.getRandomRecipes()
-                .onSuccess { recipes ->
-                    _recipes.value = recipes
-                }
-                .onFailure { exception ->
-                    _error.value = "Ошибка получения рецептов: ${exception.message}"
-                }
-            _loading.value = false
+            } finally {
+                _loading.value = false
+            }
         }
     }
     

@@ -6,7 +6,7 @@ import retrofit2.http.Header
 import retrofit2.http.POST
 
 interface TranslationApi {
-    @POST("translate/v2/translate")
+    @POST("translate")
     suspend fun translate(
         @Header("Authorization") apiKey: String,
         @Body request: TranslationRequest
@@ -16,7 +16,9 @@ interface TranslationApi {
 data class TranslationRequest(
     val sourceLanguageCode: String = "en",
     val targetLanguageCode: String = "ru",
-    val texts: List<String>
+    val texts: List<String>,
+    val folderId: String = "",
+    val format: String = "PLAIN_TEXT"
 )
 
 data class TranslationResponse(

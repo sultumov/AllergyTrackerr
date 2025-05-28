@@ -1,6 +1,7 @@
 package com.example.myapplication.data.model
 
 import com.google.gson.annotations.SerializedName
+import com.example.myapplication.data.model.Ingredient
 
 data class ProductResponse(
     val status: Int,
@@ -27,12 +28,6 @@ data class ApiProduct(
     val nutrients: Nutrients?,
     @SerializedName("nutrition_grades")
     val nutriScore: String?
-)
-
-data class Ingredient(
-    val id: String,
-    val text: String,
-    val rank: Int?
 )
 
 data class Nutrients(

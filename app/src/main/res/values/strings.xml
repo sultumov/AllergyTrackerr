@@ -6,4 +6,30 @@
     <string name="title_recipes">Рецепты</string>
     <string name="title_profile">Профиль</string>
     <string name="title_statistics">Статистика</string>
+    
+    <!-- Рецепты -->
+    <string name="recipes_search_hint">Поиск рецептов...</string>
+    <string name="recipes_no_results">Рецепты не найдены</string>
+    <string name="recipes_error_loading">Ошибка загрузки рецептов</string>
+    <string name="recipes_add_new">Добавить рецепт</string>
+    <string name="recipes_title_hint">Название рецепта</string>
+    <string name="recipes_ingredients_hint">Ингредиенты (через запятую)</string>
+    <string name="recipes_instructions_hint">Инструкция по приготовлению</string>
+    <string name="recipes_allergens_hint">Аллергены (через запятую)</string>
+    <string name="recipes_save">Сохранить</string>
+    <string name="recipes_cancel">Отмена</string>
+    
+    <!-- Детали рецепта -->
+    <string name="recipe_servings">Порций: %d</string>
+    <string name="recipe_ready_time">Время приготовления: %d мин</string>
+    <string name="recipe_dish_type">Тип блюда: %s</string>
+    <string name="recipe_ingredients">Ингредиенты:</string>
+    <string name="recipe_instructions">Приготовление:</string>
+    <string name="recipe_allergens">Аллергены:</string>
+    <string name="recipe_no_description">Нет описания</string>
+    
+    <!-- Общие -->
+    <string name="error_generic">Произошла ошибка. Попробуйте позже.</string>
+    <string name="success_recipe_added">Рецепт успешно добавлен</string>
+    <string name="loading">Загрузка...</string>
 </resources>

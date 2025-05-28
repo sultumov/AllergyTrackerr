@@ -1,6 +1,7 @@
 package com.example.myapplication.data.model
 
 import com.google.gson.annotations.SerializedName
+import com.example.myapplication.data.model.Ingredient
 
 data class RecipeSearchResponse(
     val results: List<Recipe>,
@@ -24,7 +25,7 @@ data class Recipe(
     val diets: List<String>?,
     val instructions: String?,
     val analyzedInstructions: List<AnalyzedInstruction>?,
-    val extendedIngredients: List<ExtendedIngredient>?
+    val extendedIngredients: List<String>?
 )
 
 data class AnalyzedInstruction(
@@ -46,18 +47,6 @@ data class Equipment(
     val image: String
 )
 
-data class ExtendedIngredient(
-    val id: Int,
-    val aisle: String?,
-    val image: String?,
-    val name: String,
-    val original: String,
-    val originalName: String,
-    val amount: Double,
-    val unit: String,
-    val meta: List<String>?
-)
-
 data class RecipeInformation(
     val id: Int,
     val title: String,
@@ -73,7 +62,7 @@ data class RecipeInformation(
     val occasions: List<String>?,
     val instructions: String?,
     val analyzedInstructions: List<AnalyzedInstruction>?,
-    val extendedIngredients: List<ExtendedIngredient>?,
+    val extendedIngredients: List<String>?,
     val glutenFree: Boolean,
     val dairyFree: Boolean,
     val vegetarian: Boolean,

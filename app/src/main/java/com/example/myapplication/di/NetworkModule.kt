@@ -12,6 +12,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module
@@ -27,6 +28,9 @@ object NetworkModule {
         
         return OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
             .build()
     }
 
@@ -45,7 +49,7 @@ object NetworkModule {
     @Singleton
     fun provideTranslationApi(okHttpClient: OkHttpClient): TranslationApi {
         return Retrofit.Builder()
-            .baseUrl("https://translate.api.cloud.yandex.net/")
+            .baseUrl("https://translate.api.cloud.yandex.net/translate/v2/")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

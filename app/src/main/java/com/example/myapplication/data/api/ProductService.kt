@@ -152,7 +152,7 @@ open class ProductService {
             name = apiProduct.productName ?: "Неизвестный продукт",
             brand = apiProduct.brands,
             imageUrl = apiProduct.imageUrl,
-            ingredients = ingredients,
+            ingredients = ingredients as List<String>,
             allergens = allergens,
             nutriScore = apiProduct.nutriScore,
             nutritionalInfo = null // Для простоты пропускаем пищевую ценность
