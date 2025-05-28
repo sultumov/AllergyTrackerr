@@ -1,9 +1,8 @@
 package com.example.myapplication.di
 
-import com.example.myapplication.data.api.TranslationApi
 import com.example.myapplication.data.api.USDAFoodApi
 import com.example.myapplication.data.repository.USDARecipeRepository
-import com.example.myapplication.data.service.TranslationService
+import com.example.myapplication.data.service.MLKitTranslationService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -47,26 +46,15 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideTranslationApi(okHttpClient: OkHttpClient): TranslationApi {
-        return Retrofit.Builder()
-            .baseUrl("https://translate.api.cloud.yandex.net/translate/v2/")
-            .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(TranslationApi::class.java)
-    }
-
-    @Provides
-    @Singleton
-    fun provideTranslationService(translationApi: TranslationApi): TranslationService {
-        return TranslationService(translationApi)
+    fun provideTranslationService(): MLKitTranslationService {
+        return MLKitTranslationService()
     }
 
     @Provides
     @Singleton
     fun provideUSDARecipeRepository(
         usdaApi: USDAFoodApi,
-        translationService: TranslationService
+        translationService: MLKitTranslationService
     ): USDARecipeRepository {
         return USDARecipeRepository(usdaApi, translationService)
     }

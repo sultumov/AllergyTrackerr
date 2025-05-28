@@ -7,12 +7,12 @@ import com.example.myapplication.data.api.USDAFoodResponse
 import com.example.myapplication.data.model.Recipe
 import com.example.myapplication.data.model.RecipeInformation
 import com.example.myapplication.data.model.PlaceholderRecipes
-import com.example.myapplication.data.service.TranslationService
+import com.example.myapplication.data.service.MLKitTranslationService
 import javax.inject.Inject
 
 class USDARecipeRepository @Inject constructor(
     private val usdaApi: USDAFoodApi,
-    private val translationService: TranslationService
+    private val translationService: MLKitTranslationService
 ) {
     private val TAG = "USDARecipeRepository"
     private val apiKey = ApiConfig.USDA_API_KEY
